@@ -1,5 +1,19 @@
+locals {
+  domain_names = keys(var.redirects)
+
+  # Build the JavaScript switch cases from the redirects map
+  js_cases = join("\n", [
+    for domain, config in var.redirects :
+    "        case \"${domain}\": newurl = \"https://quicksight.aws.amazon.com/?region=${config.aws_region}&directory_alias=${config.directory_alias}\"; break;"
+  ])
+}
+
+# --- Route 53 ---
+
 resource "aws_route53_record" "redirect" {
-  name    = var.domain_name
+  for_each = var.redirects
+
+  name    = each.key
   type    = "A"
   zone_id = var.r53_hosted_zone_id
 
@@ -10,9 +24,11 @@ resource "aws_route53_record" "redirect" {
   }
 }
 
+# --- CloudFront Distribution ---
+
 resource "aws_cloudfront_distribution" "redirect" {
-  aliases = [var.domain_name]
-  comment = "CloudFront URL redirect for ${var.domain_name}"
+  aliases = local.domain_names
+  comment = "${var.name_prefix} CloudFront URL redirect"
 
   default_cache_behavior {
     allowed_methods = ["GET", "HEAD"]
@@ -68,9 +84,11 @@ resource "aws_cloudfront_distribution" "redirect" {
   }
 }
 
+# --- CloudFront Cache Policy ---
+
 resource "aws_cloudfront_cache_policy" "redirect" {
   name        = "${var.name_prefix}-cache-policy"
-  comment     = "Cache policy for ${var.domain_name} URL redirect"
+  comment     = "Cache policy for ${var.name_prefix} URL redirects"
   default_ttl = 0
   max_ttl     = 31536000
   min_ttl     = 0
@@ -96,19 +114,22 @@ resource "aws_cloudfront_cache_policy" "redirect" {
   }
 }
 
+# --- CloudFront Function ---
+
 resource "aws_cloudfront_function" "redirect" {
   name    = "${var.name_prefix}-function"
   runtime = "cloudfront-js-2.0"
-  comment = "301 redirect for ${var.domain_name}"
+  comment = "301 redirect for ${var.name_prefix}"
   publish = true
 
   code = <<-JS
     function handler(event) {
         var host = event.request.headers.host.value;
-        var newurl = "https://quicksight.aws.amazon.com";
+        var newurl;
 
-        if (host === "${var.domain_name}") {
-            newurl = "https://quicksight.aws.amazon.com/?region=${var.aws_region}&directory_alias=${var.directory_alias}";
+        switch(host) {
+    ${local.js_cases}
+            default: newurl = "https://quicksight.aws.amazon.com";
         }
 
         return {
@@ -120,7 +141,10 @@ resource "aws_cloudfront_function" "redirect" {
   JS
 }
 
+# --- CloudWatch Log Group ---
+
 resource "aws_cloudwatch_log_group" "redirect" {
   name              = "/aws/cloudfront/${var.name_prefix}"
   retention_in_days = 1
+  kms_key_id        = var.cloudwatch_kms_key_id
 }

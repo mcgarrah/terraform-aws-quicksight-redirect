@@ -7,3 +7,8 @@ output "cloudfront_domain_name" {
   description = "The domain name of the CloudFront distribution"
   value       = aws_cloudfront_distribution.redirect.domain_name
 }
+
+output "redirect_domains" {
+  description = "List of domain names configured for redirection"
+  value       = keys(var.redirects)
+}
