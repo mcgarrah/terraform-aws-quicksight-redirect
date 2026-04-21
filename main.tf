@@ -1,11 +1,10 @@
 locals {
   domain_names = keys(var.redirects)
 
-  # Build the JavaScript switch cases from the redirects map
-  js_cases = join("\n", [
-    for domain, config in var.redirects :
-    "        case \"${domain}\": newurl = \"https://quicksight.aws.amazon.com/?region=${config.aws_region}&directory_alias=${config.directory_alias}\"; break;"
-  ])
+  # Build the redirect map as a JSON object for safe injection into JavaScript
+  redirect_map = { for domain, config in var.redirects :
+    domain => "https://quicksight.aws.amazon.com/?region=${config.aws_region}&directory_alias=${config.directory_alias}"
+  }
 }
 
 # --- Route 53 ---
@@ -126,13 +125,9 @@ resource "aws_cloudfront_function" "redirect" {
 
   code = <<-JS
     function handler(event) {
+        var redirects = ${jsonencode(local.redirect_map)};
         var host = event.request.headers.host.value;
-        var newurl;
-
-        switch(host) {
-    ${local.js_cases}
-            default: newurl = "https://quicksight.aws.amazon.com";
-        }
+        var newurl = redirects[host] || "https://quicksight.aws.amazon.com";
 
         return {
             statusCode: 301,
