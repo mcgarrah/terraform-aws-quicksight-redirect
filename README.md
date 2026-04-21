@@ -1,4 +1,4 @@
-# AWS CloudFront URL Redirector
+# terraform-aws-quicksight-redirect
 
 A Terraform module that creates friendly vanity URLs for AWS QuickSight using CloudFront, ACM, and Route 53. A single CloudFront distribution handles multiple domain redirects — a CloudFront Function evaluates incoming requests by hostname and returns an HTTP 301 permanent redirect to the appropriate QuickSight instance.
 
@@ -27,7 +27,7 @@ Browser -> Route 53 (A record alias) -> CloudFront Distribution -> CloudFront Fu
 
 ```hcl
 module "quicksight_redirect" {
-  source = "github.com/mcgarrah/aws_cloudfront_url_redirector"
+  source = "github.com/mcgarrah/terraform-aws-quicksight-redirect"
 
   name_prefix         = "quicksight"
   r53_hosted_zone_id  = "Z1234567890ABC"
@@ -54,7 +54,7 @@ A single module instance handles multiple domains through one CloudFront distrib
 
 ```hcl
 module "quicksight_redirects" {
-  source = "github.com/mcgarrah/aws_cloudfront_url_redirector"
+  source = "github.com/mcgarrah/terraform-aws-quicksight-redirect"
 
   name_prefix         = "quicksight"
   r53_hosted_zone_id  = var.r53_hosted_zone_id
@@ -78,7 +78,7 @@ This creates one CloudFront distribution with both domains as aliases. The Cloud
 ### Pinning to a version
 
 ```hcl
-source = "github.com/mcgarrah/aws_cloudfront_url_redirector?ref=v1.0.0"
+source = "github.com/mcgarrah/terraform-aws-quicksight-redirect?ref=v1.0.0"
 ```
 
 ## Module Inputs
