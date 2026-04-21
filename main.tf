@@ -47,10 +47,6 @@ resource "aws_cloudfront_distribution" "redirect" {
     allowed_methods = ["GET", "HEAD"]
     cache_policy_id = aws_cloudfront_cache_policy.redirect.id
     cached_methods  = ["GET", "HEAD"]
-    compress        = true
-    default_ttl     = 0
-    max_ttl         = 0
-    min_ttl         = 0
 
     function_association {
       event_type   = "viewer-request"
@@ -112,9 +108,6 @@ resource "aws_cloudfront_cache_policy" "redirect" {
     cookies_config {
       cookie_behavior = "none"
     }
-
-    enable_accept_encoding_brotli = true
-    enable_accept_encoding_gzip   = true
 
     headers_config {
       header_behavior = "whitelist"
