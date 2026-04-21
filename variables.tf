@@ -57,6 +57,18 @@ variable "redirects" {
   }
 }
 
+variable "enable_access_logging" {
+  description = "Enable CloudFront standard access logging to an S3 bucket. Creates and manages the logging bucket automatically."
+  type        = bool
+  default     = false
+}
+
+variable "access_log_prefix" {
+  description = "Optional prefix for CloudFront access log file names in the S3 bucket."
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Map of tags to apply to all taggable resources"
   type        = map(string)

@@ -94,6 +94,8 @@ source = "github.com/mcgarrah/terraform-aws-quicksight-redirect?ref=v1.0.0"
 | `r53_hosted_zone_id` | Route 53 hosted zone ID | — | yes |
 | `acm_certificate_arn` | ACM certificate ARN (must be in us-east-1) | — | yes |
 | `redirects` | Map of domain names to QuickSight redirect parameters (see below) | — | yes |
+| `enable_access_logging` | Enable CloudFront standard access logging to an auto-managed S3 bucket | `false` | no |
+| `access_log_prefix` | Optional prefix for access log file names in the S3 bucket | `""` | no |
 | `tags` | Map of tags to apply to all taggable resources | `{}` | no |
 
 ### `redirects` map
@@ -112,6 +114,8 @@ Each key is a domain name, and the value is an object with:
 | `cloudfront_distribution_id` | The ID of the CloudFront distribution |
 | `cloudfront_domain_name` | The domain name of the CloudFront distribution (e.g. `d111111abcdef8.cloudfront.net`) |
 | `redirect_domains` | List of domain names configured for redirection |
+| `access_log_bucket_name` | Name of the S3 bucket for CloudFront access logs (null if logging is disabled) |
+| `access_log_bucket_arn` | ARN of the S3 bucket for CloudFront access logs (null if logging is disabled) |
 
 ## How the CloudFront Function Works
 
@@ -141,6 +145,7 @@ The redirect map is built from the `redirects` variable using `jsonencode()` at 
 - **CloudFront Distribution** — Single distribution hosting the CloudFront Function with a dummy origin (`none.none`)
 - **CloudFront Cache Policy** — Forwards the `host` header to enable hostname-based routing in the function
 - **CloudFront Function** — JavaScript function that returns 301 redirects based on hostname
+- **S3 Bucket** *(optional)* — Created when `enable_access_logging = true` for CloudFront standard access logs, with SSE-AES256 encryption, public access blocked, and 90-day lifecycle expiration
 
 ## Notes
 
