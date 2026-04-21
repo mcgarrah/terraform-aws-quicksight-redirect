@@ -14,10 +14,7 @@ provider "aws" {
 }
 
 module "quicksight_redirects" {
-  # For local development, use a relative path:
-  #   source = "../../"
-  # For external usage, reference the GitHub repository:
-  source = "github.com/mcgarrah/terraform-aws-quicksight-redirect"
+  source = "../../"
 
   name_prefix         = "quicksight"
   r53_hosted_zone_id  = var.r53_hosted_zone_id
