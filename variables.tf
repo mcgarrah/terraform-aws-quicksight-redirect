@@ -62,9 +62,3 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
-
-variable "cloudwatch_kms_key_id" {
-  description = "Optional KMS key ID for encrypting CloudWatch log group. If not set, AWS-managed encryption is used."
-  type        = string
-  default     = null
-}
