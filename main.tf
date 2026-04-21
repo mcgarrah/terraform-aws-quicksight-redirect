@@ -77,6 +77,8 @@ resource "aws_cloudfront_distribution" "redirect" {
     }
   }
 
+  tags = var.tags
+
   viewer_certificate {
     acm_certificate_arn      = var.acm_certificate_arn
     minimum_protocol_version = "TLSv1.2_2021"
@@ -147,4 +149,5 @@ resource "aws_cloudwatch_log_group" "redirect" {
   name              = "/aws/cloudfront/${var.name_prefix}"
   retention_in_days = 1
   kms_key_id        = var.cloudwatch_kms_key_id
+  tags              = var.tags
 }
