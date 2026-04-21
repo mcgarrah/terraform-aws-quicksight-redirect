@@ -4,11 +4,16 @@ A Terraform module that creates friendly vanity URLs for AWS QuickSight using Cl
 
 ## Architecture
 
-```
-Browser -> Route 53 (A record alias) -> CloudFront Distribution -> CloudFront Function (301 redirect)
+```mermaid
+flowchart LR
+    Browser -->|HTTPS| R53["Route 53\nA + AAAA records"]
+    R53 -->|alias| CF["CloudFront\nDistribution"]
+    CF -->|viewer-request| CFF["CloudFront Function\n301 redirect"]
+    ACM["ACM Certificate\nus-east-1"] -.->|TLS| CF
+    CFF -->|Location header| QS["QuickSight"]
 ```
 
-1. Route 53 A records alias your custom domains to a single CloudFront distribution.
+1. Route 53 A and AAAA records alias your custom domains to a single CloudFront distribution (dual-stack IPv4/IPv6).
 2. An ACM certificate provides HTTPS for all configured domains.
 3. A CloudFront Function intercepts every viewer request and returns a 301 redirect before the request ever reaches an origin.
 4. The origin is set to a dummy value (`none.none`) — this is intentional. The CloudFront Function handles all requests so no origin is ever contacted.
@@ -17,7 +22,7 @@ Browser -> Route 53 (A record alias) -> CloudFront Distribution -> CloudFront Fu
 
 - [Terraform](https://www.terraform.io/downloads) >= 1.5
 - AWS provider >= 5.16.0
-- An AWS account with permissions to manage Route 53, CloudFront, ACM, and CloudWatch
+- An AWS account with permissions to manage Route 53, CloudFront, and ACM
 - An existing Route 53 hosted zone for your domain
 - An ACM certificate **in `us-east-1`** covering all domain names you want to redirect (CloudFront is a global service and requires certificates in us-east-1)
 
@@ -89,7 +94,7 @@ source = "github.com/mcgarrah/terraform-aws-quicksight-redirect?ref=v1.0.0"
 | `r53_hosted_zone_id` | Route 53 hosted zone ID | — | yes |
 | `acm_certificate_arn` | ACM certificate ARN (must be in us-east-1) | — | yes |
 | `redirects` | Map of domain names to QuickSight redirect parameters (see below) | — | yes |
-| `cloudwatch_kms_key_id` | Optional KMS key ID for CloudWatch log encryption | `null` | no |
+| `tags` | Map of tags to apply to all taggable resources | `{}` | no |
 
 ### `redirects` map
 
@@ -110,20 +115,15 @@ Each key is a domain name, and the value is an object with:
 
 ## How the CloudFront Function Works
 
-The CloudFront Function is written in JavaScript (`cloudfront-js-2.0` runtime) and runs on every viewer request. It inspects the `Host` header and uses a `switch` statement to match the hostname against the configured domains. Each match returns a 301 redirect to the corresponding QuickSight URL. Unmatched hosts redirect to the base QuickSight URL.
+The CloudFront Function is written in JavaScript (`cloudfront-js-2.0` runtime) and runs on every viewer request. It inspects the `Host` header and looks up the hostname in a JSON redirect map. Matched hosts return a 301 redirect to the corresponding QuickSight URL. Unmatched hosts redirect to the base QuickSight URL.
 
 For example, given two redirects, Terraform generates:
 
 ```javascript
 function handler(event) {
+    var redirects = {"analytics.example.com":"https://quicksight.aws.amazon.com/?region=us-east-1&directory_alias=analytics","reporting.example.com":"https://quicksight.aws.amazon.com/?region=us-west-2&directory_alias=reporting"};
     var host = event.request.headers.host.value;
-    var newurl;
-
-    switch(host) {
-        case "analytics.example.com": newurl = "https://quicksight.aws.amazon.com/?region=us-east-1&directory_alias=analytics"; break;
-        case "reporting.example.com": newurl = "https://quicksight.aws.amazon.com/?region=us-west-2&directory_alias=reporting"; break;
-        default: newurl = "https://quicksight.aws.amazon.com";
-    }
+    var newurl = redirects[host] || "https://quicksight.aws.amazon.com";
 
     return {
         statusCode: 301,
@@ -133,15 +133,14 @@ function handler(event) {
 }
 ```
 
-The domain names, regions, and directory aliases are injected from the `redirects` variable at deploy time.
+The redirect map is built from the `redirects` variable using `jsonencode()` at deploy time, which safely escapes all values and prevents injection.
 
 ## AWS Resources Created
 
-- **Route 53 A Records** — One per domain, all aliased to the same CloudFront distribution
+- **Route 53 A and AAAA Records** — One A and one AAAA record per domain, all aliased to the same CloudFront distribution (dual-stack IPv4/IPv6)
 - **CloudFront Distribution** — Single distribution hosting the CloudFront Function with a dummy origin (`none.none`)
 - **CloudFront Cache Policy** — Forwards the `host` header to enable hostname-based routing in the function
 - **CloudFront Function** — JavaScript function that returns 301 redirects based on hostname
-- **CloudWatch Log Group** — Logs for the CloudFront function (1-day retention)
 
 ## Notes
 
