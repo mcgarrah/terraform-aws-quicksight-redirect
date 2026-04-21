@@ -23,6 +23,20 @@ resource "aws_route53_record" "redirect" {
   }
 }
 
+resource "aws_route53_record" "redirect_ipv6" {
+  for_each = var.redirects
+
+  name    = each.key
+  type    = "AAAA"
+  zone_id = var.r53_hosted_zone_id
+
+  alias {
+    name                   = aws_cloudfront_distribution.redirect.domain_name
+    zone_id                = aws_cloudfront_distribution.redirect.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
 # --- CloudFront Distribution ---
 
 resource "aws_cloudfront_distribution" "redirect" {
