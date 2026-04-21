@@ -58,9 +58,15 @@ variable "redirects" {
 }
 
 variable "enable_access_logging" {
-  description = "Enable CloudFront standard access logging to an S3 bucket. Creates and manages the logging bucket automatically."
+  description = "Enable CloudFront standard access logging. When true, uses either the auto-managed S3 bucket or the bucket specified in access_log_bucket_domain_name."
   type        = bool
   default     = false
+}
+
+variable "access_log_bucket_domain_name" {
+  description = "Regional domain name of an existing S3 bucket for CloudFront access logs (e.g. my-bucket.s3.us-east-1.amazonaws.com). When set, the module skips creating its own bucket. The bucket must have ACLs enabled with BucketOwnerPreferred ownership and the log-delivery-write canned ACL."
+  type        = string
+  default     = null
 }
 
 variable "access_log_prefix" {

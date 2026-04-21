@@ -95,6 +95,7 @@ source = "github.com/mcgarrah/terraform-aws-quicksight-redirect?ref=v1.0.0"
 | `acm_certificate_arn` | ACM certificate ARN (must be in us-east-1) | — | yes |
 | `redirects` | Map of domain names to QuickSight redirect parameters (see below) | — | yes |
 | `enable_access_logging` | Enable CloudFront standard access logging to an auto-managed S3 bucket | `false` | no |
+| `access_log_bucket_domain_name` | Regional domain name of an existing S3 bucket for access logs (overrides auto-managed bucket) | `null` | no |
 | `access_log_prefix` | Optional prefix for access log file names in the S3 bucket | `""` | no |
 | `tags` | Map of tags to apply to all taggable resources | `{}` | no |
 
@@ -114,8 +115,8 @@ Each key is a domain name, and the value is an object with:
 | `cloudfront_distribution_id` | The ID of the CloudFront distribution |
 | `cloudfront_domain_name` | The domain name of the CloudFront distribution (e.g. `d111111abcdef8.cloudfront.net`) |
 | `redirect_domains` | List of domain names configured for redirection |
-| `access_log_bucket_name` | Name of the S3 bucket for CloudFront access logs (null if logging is disabled) |
-| `access_log_bucket_arn` | ARN of the S3 bucket for CloudFront access logs (null if logging is disabled) |
+| `access_log_bucket_name` | Name of the S3 bucket for CloudFront access logs (null if logging is disabled or using an external bucket) |
+| `access_log_bucket_arn` | ARN of the S3 bucket for CloudFront access logs (null if logging is disabled or using an external bucket) |
 
 ## How the CloudFront Function Works
 
@@ -146,6 +147,37 @@ The redirect map is built from the `redirects` variable using `jsonencode()` at 
 - **CloudFront Cache Policy** — Forwards the `host` header to enable hostname-based routing in the function
 - **CloudFront Function** — JavaScript function that returns 301 redirects based on hostname
 - **S3 Bucket** *(optional)* — Created when `enable_access_logging = true` for CloudFront standard access logs, with SSE-AES256 encryption, public access blocked, and 90-day lifecycle expiration
+
+## Access Logging
+
+Access logging is disabled by default. When enabled with `enable_access_logging = true`, the module creates and manages an S3 bucket with AES256 encryption, public access blocked, and a 90-day log expiration lifecycle.
+
+For teams that need SSE-KMS encryption, custom lifecycle policies, cross-account log delivery, or centralized logging buckets, the module supports a bring-your-own-bucket model via `access_log_bucket_domain_name`. This is a deliberate design choice — rather than exposing every S3 bucket configuration option as a module variable, the caller creates and configures the bucket externally with full control over encryption, replication, and policies, then passes it to the module.
+
+### Managed bucket (simple)
+
+```hcl
+module "quicksight_redirect" {
+  source = "github.com/mcgarrah/terraform-aws-quicksight-redirect"
+  # ...
+  enable_access_logging = true
+  access_log_prefix     = "quicksight/"
+}
+```
+
+### External bucket (full control)
+
+```hcl
+module "quicksight_redirect" {
+  source = "github.com/mcgarrah/terraform-aws-quicksight-redirect"
+  # ...
+  enable_access_logging          = true
+  access_log_bucket_domain_name  = aws_s3_bucket.my_log_bucket.bucket_regional_domain_name
+  access_log_prefix              = "quicksight/"
+}
+```
+
+When using an external bucket, it must have ACLs enabled with `BucketOwnerPreferred` object ownership and the `log-delivery-write` canned ACL. See the [CloudFront standard logging documentation](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/standard-logging-legacy-s3.html) for full requirements.
 
 ## Notes
 

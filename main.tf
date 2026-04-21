@@ -5,6 +5,14 @@ locals {
   redirect_map = { for domain, config in var.redirects :
     domain => "https://quicksight.aws.amazon.com/?region=${config.aws_region}&directory_alias=${config.directory_alias}"
   }
+
+  # Create the managed bucket only when logging is enabled and no external bucket is provided
+  create_log_bucket = var.enable_access_logging && var.access_log_bucket_domain_name == null
+
+  # Use the external bucket if provided, otherwise use the auto-created one
+  log_bucket_domain_name = var.access_log_bucket_domain_name != null ? var.access_log_bucket_domain_name : (
+    local.create_log_bucket ? aws_s3_bucket.access_logs[0].bucket_regional_domain_name : null
+  )
 }
 
 # --- Route 53 ---
@@ -67,7 +75,7 @@ resource "aws_cloudfront_distribution" "redirect" {
   dynamic "logging_config" {
     for_each = var.enable_access_logging ? [1] : []
     content {
-      bucket          = aws_s3_bucket.access_logs[0].bucket_regional_domain_name
+      bucket          = local.log_bucket_domain_name
       include_cookies = false
       prefix          = var.access_log_prefix
     }
@@ -107,7 +115,7 @@ resource "aws_cloudfront_distribution" "redirect" {
 # --- Access Logging S3 Bucket ---
 
 resource "aws_s3_bucket" "access_logs" {
-  count = var.enable_access_logging ? 1 : 0
+  count = local.create_log_bucket ? 1 : 0
 
   bucket_prefix = "${var.name_prefix}-cf-logs-"
   force_destroy = true
@@ -115,7 +123,7 @@ resource "aws_s3_bucket" "access_logs" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "access_logs" {
-  count  = var.enable_access_logging ? 1 : 0
+  count  = local.create_log_bucket ? 1 : 0
   bucket = aws_s3_bucket.access_logs[0].id
 
   rule {
@@ -124,7 +132,7 @@ resource "aws_s3_bucket_ownership_controls" "access_logs" {
 }
 
 resource "aws_s3_bucket_acl" "access_logs" {
-  count  = var.enable_access_logging ? 1 : 0
+  count  = local.create_log_bucket ? 1 : 0
   bucket = aws_s3_bucket.access_logs[0].id
 
   depends_on = [aws_s3_bucket_ownership_controls.access_logs]
@@ -132,7 +140,7 @@ resource "aws_s3_bucket_acl" "access_logs" {
 }
 
 resource "aws_s3_bucket_public_access_block" "access_logs" {
-  count  = var.enable_access_logging ? 1 : 0
+  count  = local.create_log_bucket ? 1 : 0
   bucket = aws_s3_bucket.access_logs[0].id
 
   block_public_acls       = true
@@ -142,7 +150,7 @@ resource "aws_s3_bucket_public_access_block" "access_logs" {
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "access_logs" {
-  count  = var.enable_access_logging ? 1 : 0
+  count  = local.create_log_bucket ? 1 : 0
   bucket = aws_s3_bucket.access_logs[0].id
 
   rule {
@@ -153,7 +161,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "access_logs" {
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "access_logs" {
-  count  = var.enable_access_logging ? 1 : 0
+  count  = local.create_log_bucket ? 1 : 0
   bucket = aws_s3_bucket.access_logs[0].id
 
   rule {

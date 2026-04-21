@@ -14,11 +14,11 @@ output "redirect_domains" {
 }
 
 output "access_log_bucket_name" {
-  description = "Name of the S3 bucket for CloudFront access logs (null if logging is disabled)"
-  value       = var.enable_access_logging ? aws_s3_bucket.access_logs[0].id : null
+  description = "Name of the S3 bucket for CloudFront access logs (null if logging is disabled or using an external bucket)"
+  value       = local.create_log_bucket ? aws_s3_bucket.access_logs[0].id : null
 }
 
 output "access_log_bucket_arn" {
-  description = "ARN of the S3 bucket for CloudFront access logs (null if logging is disabled)"
-  value       = var.enable_access_logging ? aws_s3_bucket.access_logs[0].arn : null
+  description = "ARN of the S3 bucket for CloudFront access logs (null if logging is disabled or using an external bucket)"
+  value       = local.create_log_bucket ? aws_s3_bucket.access_logs[0].arn : null
 }
