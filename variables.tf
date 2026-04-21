@@ -42,8 +42,8 @@ variable "redirects" {
   }
 
   validation {
-    condition     = alltrue([for k, v in var.redirects : can(regex("^[a-z0-9.-]+$", k))])
-    error_message = "Redirect domain names must contain only lowercase alphanumeric characters, hyphens, and dots."
+    condition     = alltrue([for k, v in var.redirects : can(regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$", k))])
+    error_message = "Redirect domain names must be valid hostnames (e.g. analytics.example.com)."
   }
 
   validation {
