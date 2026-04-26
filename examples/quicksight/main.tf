@@ -33,13 +33,16 @@ module "quicksight_redirects" {
 }
 
 output "cloudfront_distribution_id" {
-  value = module.quicksight_redirects.cloudfront_distribution_id
+  description = "The ID of the CloudFront distribution"
+  value       = module.quicksight_redirects.cloudfront_distribution_id
 }
 
 output "cloudfront_domain_name" {
-  value = module.quicksight_redirects.cloudfront_domain_name
+  description = "The domain name of the CloudFront distribution"
+  value       = module.quicksight_redirects.cloudfront_domain_name
 }
 
 output "redirect_domains" {
-  value = module.quicksight_redirects.redirect_domains
+  description = "List of domain names configured for redirection"
+  value       = module.quicksight_redirects.redirect_domains
 }

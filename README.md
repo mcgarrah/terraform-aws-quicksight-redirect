@@ -32,7 +32,8 @@ flowchart LR
 
 ```hcl
 module "quicksight_redirect" {
-  source = "github.com/mcgarrah/terraform-aws-quicksight-redirect"
+  source  = "mcgarrah/quicksight-redirect/aws"
+  version = "~> 1.0"
 
   name_prefix         = "quicksight"
   r53_hosted_zone_id  = "Z1234567890ABC"
@@ -59,7 +60,8 @@ A single module instance handles multiple domains through one CloudFront distrib
 
 ```hcl
 module "quicksight_redirects" {
-  source = "github.com/mcgarrah/terraform-aws-quicksight-redirect"
+  source  = "mcgarrah/quicksight-redirect/aws"
+  version = "~> 1.0"
 
   name_prefix         = "quicksight"
   r53_hosted_zone_id  = var.r53_hosted_zone_id
@@ -80,43 +82,74 @@ module "quicksight_redirects" {
 
 This creates one CloudFront distribution with both domains as aliases. The CloudFront Function routes each hostname to its corresponding QuickSight instance.
 
-### Pinning to a version
+### Pinning to a specific version
+
+Using the [Terraform Registry](https://registry.terraform.io/modules/mcgarrah/quicksight-redirect/aws/latest) (recommended):
+
+```hcl
+source  = "mcgarrah/quicksight-redirect/aws"
+version = "1.0.0"
+```
+
+Using the GitHub source directly:
 
 ```hcl
 source = "github.com/mcgarrah/terraform-aws-quicksight-redirect?ref=v1.0.0"
 ```
 
-## Module Inputs
+<!-- BEGIN_TF_DOCS -->
+### Requirements
 
-| Variable | Description | Default | Required |
-|---|---|---|---|
-| `name_prefix` | Prefix for resource names to avoid collisions | `"url-redirect"` | no |
-| `r53_hosted_zone_id` | Route 53 hosted zone ID | — | yes |
-| `acm_certificate_arn` | ACM certificate ARN (must be in us-east-1) | — | yes |
-| `redirects` | Map of domain names to QuickSight redirect parameters (see below) | — | yes |
-| `enable_access_logging` | Enable CloudFront standard access logging to an auto-managed S3 bucket | `false` | no |
-| `access_log_bucket_domain_name` | Regional domain name of an existing S3 bucket for access logs (overrides auto-managed bucket) | `null` | no |
-| `access_log_prefix` | Optional prefix for access log file names in the S3 bucket | `""` | no |
-| `tags` | Map of tags to apply to all taggable resources | `{}` | no |
+| Name | Version |
+| ---- | ------- |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 5.16.0 |
 
-### `redirects` map
+### Providers
 
-Each key is a domain name, and the value is an object with:
+| Name | Version |
+| ---- | ------- |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 5.16.0 |
 
-| Field | Description | Example |
-|---|---|---|
-| `aws_region` | AWS region parameter in the QuickSight redirect URL | `"us-east-1"` |
-| `directory_alias` | QuickSight directory alias parameter in the redirect URL | `"analytics"` |
+### Resources
 
-## Module Outputs
+| Name | Type |
+| ---- | ---- |
+| [aws_cloudfront_cache_policy.redirect](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudfront_cache_policy) | resource |
+| [aws_cloudfront_distribution.redirect](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudfront_distribution) | resource |
+| [aws_cloudfront_function.redirect](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudfront_function) | resource |
+| [aws_route53_record.redirect](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) | resource |
+| [aws_route53_record.redirect_ipv6](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) | resource |
+| [aws_s3_bucket.access_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket) | resource |
+| [aws_s3_bucket_acl.access_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_acl) | resource |
+| [aws_s3_bucket_lifecycle_configuration.access_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_lifecycle_configuration) | resource |
+| [aws_s3_bucket_ownership_controls.access_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_ownership_controls) | resource |
+| [aws_s3_bucket_public_access_block.access_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_public_access_block) | resource |
+| [aws_s3_bucket_server_side_encryption_configuration.access_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_server_side_encryption_configuration) | resource |
 
-| Output | Description |
-|---|---|
-| `cloudfront_distribution_id` | The ID of the CloudFront distribution |
-| `cloudfront_domain_name` | The domain name of the CloudFront distribution (e.g. `d111111abcdef8.cloudfront.net`) |
-| `redirect_domains` | List of domain names configured for redirection |
-| `access_log_bucket_name` | Name of the S3 bucket for CloudFront access logs (null if logging is disabled or using an external bucket) |
-| `access_log_bucket_arn` | ARN of the S3 bucket for CloudFront access logs (null if logging is disabled or using an external bucket) |
+### Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_acm_certificate_arn"></a> [acm\_certificate\_arn](#input\_acm\_certificate\_arn) | ACM certificate ARN covering all domain names in redirects (must be in us-east-1) | `string` | n/a | yes |
+| <a name="input_r53_hosted_zone_id"></a> [r53\_hosted\_zone\_id](#input\_r53\_hosted\_zone\_id) | Route 53 hosted zone ID for the domain | `string` | n/a | yes |
+| <a name="input_redirects"></a> [redirects](#input\_redirects) | Map of domain names to QuickSight redirect parameters. Each key is a domain name, and the value specifies the aws\_region and directory\_alias for the redirect URL. | <pre>map(object({<br/>    aws_region      = string<br/>    directory_alias = string<br/>  }))</pre> | n/a | yes |
+| <a name="input_access_log_bucket_domain_name"></a> [access\_log\_bucket\_domain\_name](#input\_access\_log\_bucket\_domain\_name) | Regional domain name of an existing S3 bucket for CloudFront access logs (e.g. my-bucket.s3.us-east-1.amazonaws.com). When set, the module skips creating its own bucket. The bucket must have ACLs enabled with BucketOwnerPreferred ownership and the log-delivery-write canned ACL. | `string` | `null` | no |
+| <a name="input_access_log_prefix"></a> [access\_log\_prefix](#input\_access\_log\_prefix) | Optional prefix for CloudFront access log file names in the S3 bucket. | `string` | `""` | no |
+| <a name="input_enable_access_logging"></a> [enable\_access\_logging](#input\_enable\_access\_logging) | Enable CloudFront standard access logging. When true, uses either the auto-managed S3 bucket or the bucket specified in access\_log\_bucket\_domain\_name. | `bool` | `false` | no |
+| <a name="input_name_prefix"></a> [name\_prefix](#input\_name\_prefix) | Prefix for resource names to avoid collisions when using multiple instances of this module | `string` | `"url-redirect"` | no |
+| <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all taggable resources | `map(string)` | `{}` | no |
+
+### Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| <a name="output_access_log_bucket_arn"></a> [access\_log\_bucket\_arn](#output\_access\_log\_bucket\_arn) | ARN of the S3 bucket for CloudFront access logs (null if logging is disabled or using an external bucket) |
+| <a name="output_access_log_bucket_name"></a> [access\_log\_bucket\_name](#output\_access\_log\_bucket\_name) | Name of the S3 bucket for CloudFront access logs (null if logging is disabled or using an external bucket) |
+| <a name="output_cloudfront_distribution_id"></a> [cloudfront\_distribution\_id](#output\_cloudfront\_distribution\_id) | The ID of the CloudFront distribution |
+| <a name="output_cloudfront_domain_name"></a> [cloudfront\_domain\_name](#output\_cloudfront\_domain\_name) | The domain name of the CloudFront distribution |
+| <a name="output_redirect_domains"></a> [redirect\_domains](#output\_redirect\_domains) | List of domain names configured for redirection |
+<!-- END_TF_DOCS -->
 
 ## How the CloudFront Function Works
 
@@ -140,14 +173,6 @@ function handler(event) {
 
 The redirect map is built from the `redirects` variable using `jsonencode()` at deploy time, which safely escapes all values and prevents injection.
 
-## AWS Resources Created
-
-- **Route 53 A and AAAA Records** — One A and one AAAA record per domain, all aliased to the same CloudFront distribution (dual-stack IPv4/IPv6)
-- **CloudFront Distribution** — Single distribution hosting the CloudFront Function with a dummy origin (`none.none`)
-- **CloudFront Cache Policy** — Forwards the `host` header to enable hostname-based routing in the function
-- **CloudFront Function** — JavaScript function that returns 301 redirects based on hostname
-- **S3 Bucket** *(optional)* — Created when `enable_access_logging = true` for CloudFront standard access logs, with SSE-AES256 encryption, public access blocked, and 90-day lifecycle expiration
-
 ## Access Logging
 
 Access logging is disabled by default. When enabled with `enable_access_logging = true`, the module creates and manages an S3 bucket with AES256 encryption, public access blocked, and a 90-day log expiration lifecycle.
@@ -158,7 +183,8 @@ For teams that need SSE-KMS encryption, custom lifecycle policies, cross-account
 
 ```hcl
 module "quicksight_redirect" {
-  source = "github.com/mcgarrah/terraform-aws-quicksight-redirect"
+  source  = "mcgarrah/quicksight-redirect/aws"
+  version = "~> 1.0"
   # ...
   enable_access_logging = true
   access_log_prefix     = "quicksight/"
@@ -169,7 +195,8 @@ module "quicksight_redirect" {
 
 ```hcl
 module "quicksight_redirect" {
-  source = "github.com/mcgarrah/terraform-aws-quicksight-redirect"
+  source  = "mcgarrah/quicksight-redirect/aws"
+  version = "~> 1.0"
   # ...
   enable_access_logging          = true
   access_log_bucket_domain_name  = aws_s3_bucket.my_log_bucket.bucket_regional_domain_name
@@ -191,6 +218,14 @@ When using an external bucket, it must have ACLs enabled with `BucketOwnerPrefer
 ## Examples
 
 See the [examples/quicksight](examples/quicksight) directory for a complete working example.
+
+## Documentation
+
+This README is partially generated by [terraform-docs](https://terraform-docs.io/). The sections between `BEGIN_TF_DOCS` and `END_TF_DOCS` markers are auto-generated from the module source. To regenerate after changing variables, outputs, or resources:
+
+```bash
+terraform-docs markdown table --output-file README.md --output-mode inject .
+```
 
 ## License
 
